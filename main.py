@@ -1,71 +1,78 @@
 import numpy as np
-import scipy
+import scipy.linalg
+import matplotlib.pyplot as plt
 
 
 def solve_equations(A, b):
-    '''Try Gauss-Seidl method, if iterations > 1000, then do LU factorization'''
-    N = len(A)
-    x_n = np.ones((N, 1))
-    x = np.ones((N, 1))
-    iter = 0
-    bound = 1e-9
-    while np.linalg.norm(np.dot(A, x) - b) > bound:
-        for i in range(N):
-            p1 = np.dot(A[i, :i], x_n[:i])
-            p2 = np.dot(A[i, i + 1:], x[i + 1:])
-            x_n[i, 0] = (b[i] - p1 - p2) / A[i, i]
-        x = np.copy(x_n)
-        iter += 1
+    '''LU factorization with pivoting'''
+    M,N = np.shape(A)
+    P,L,U = LU_with_pivoting(A) # działa ok
 
-    norm_res = np.linalg.norm(np.dot(A, x) - b)
-
-    if iter < 1000:
-        return x
-
-    U = np.copy(A)
-    L = np.eye(N)
-
-    # decomposition
-
-    for k in range(N - 1):
-        for j in range(k + 1, N):
-            L[j, k] = U[j, k] / U[k, k]
-            U[j, k:N] -= L[j, k] * U[k, k:N]
-
-    # solving
-    # forward substitution Ly = b
-    y = np.zeros(N)
-    y[0] = b[0] / L[0, 0]
-    # y[0, 0] = self.b[0, 0] / L[0, 0]
-    for i in range(1, N):
-        sum = 0
-        for j in range(0, i):
-            sum += L[i, j] * y[j]
-        y[i] = (b[i]) - sum / L[i, i]
-
-    # backward substitution Ux = y
-
-    for i in range(N - 1, -1, -1):
-        sum = y[i]
-        for j in range(i, N):
-            if i != j:
-                sum -= U[i, j] * x[j]
-        x[i] = sum / U[i, i]
-
-    norm_res = np.linalg.norm(np.dot(A, x) - b)
+    # x = A \ B
+    # x = inv(A) * B
+    # x = U \ (L \ (P*b))
+    x = np.linalg.lstsq(U, (np.linalg.lstsq(L, (np.dot(P, b)))[0]))[0]
     return x
 
 
+def LU_with_pivoting(A):
+    M, N = np.shape(A)
+    U = np.copy(A)
+    L = np.eye(N)
+    P = np.eye(N)
+
+    # decomposition
+    for k in range(M - 1):
+        # pivoting
+        pivot = max(abs(U[k:M, k]))
+        for i in range(k, M):
+            if abs(U[i, k]) == pivot:
+                ind = i
+                break
+        #change rows
+        U[[k, ind], k:M] = U[[ind, k], k:M]
+        L[[k, ind], :k] = L[[ind, k], :k]
+        P[[k, ind], :] = P[[ind, k], :]
+
+        for j in range(k+1, M):
+            L[j, k] = U[j, k] / U[k, k]
+            U[j, k:M] -= L[j, k] * U[k, k:M]
+
+    return P, L, U
+
 def polynomial_interpolation(data):
-    
+    x = np.array([i[0] for i in data])[np.newaxis].T
+    y = np.array([i[1] for i in data])[np.newaxis].T
+    N = len(data)
+
+    #Vandermonde matrix
+    V = np.array([[i**n for n in range(N-1, -1, -1)] for i in x]).reshape((N, N))
+
+    a = solve_equations(V, y)
+    powers = list(reversed(range(N)))
+
+    def value(x):
+        x_n = [x**n for n in powers]
+        vals = []
+        for i in range(N):
+            vals.append(x_n[i]*a[i])
+        return sum(vals)
+
+    x_s = np.arange(min(x), max(x), 0.01)
+    y_s = value(x_s)
+    plt.plot(x, y, 'bo')
+    plt.plot(x_s, y_s)
+    plt.show()
 
 def main():
-    A = np.array([3, 2, -1, 2, -2, 4, -1, 0.5, -1]).reshape((3, 3))
-    b = np.array([1., -2., 0.])[np.newaxis].T
+    #points = [(1., 3.), (3., 7), (8., 10.)]
+    points = [(1.,1.), (2.,2.), (3.,1.), (4.,1.), (0,0)]
+    #points = [(0., 4.), (2., 1.), (3., 6.), (4., 1.)]
 
-    print(A, b)
-    print(solve_equations(A, b))
+    coords = 
+    points = [(x,x)]
+    polynomial_interpolation(points)
 
-    print(np.linalg.solve(A,b))
+
 if __name__ == "__main__":
     main()
