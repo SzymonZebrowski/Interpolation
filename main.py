@@ -100,17 +100,62 @@ def spline_interpolation(data):
     y = np.array([i[1] for i in data])[np.newaxis].T
     N = len(data)
 
+    no_splits = N-1
+    results = []
+    for i in range(no_splits-1):
+        #Si - odcinek między punktami xi, a xi+1
+        #h = xi+1 - xi
+        h=x[i+1]-x[i]
+        A = np.array([[1,   0,   0,   0,   0,   0,   0,   0],
+                      [1,   h,h**2,h**3,   0,   0,   0,   0],
+                      [0,   0,   0,   0,   1,   0,   0,   0],
+                      [0,   0,   0,   0,   1,   h,h**2,h**3],
+                      [0,   1, 2*h,3*h**2, 0,  -1,   0,   0],
+                      [0,   0,   2, 6*h,   0,   0,  -2,   0],
+                      [0,   0,   1,   0,   0,   0,   0,   0],
+                      [0,   0,   0,   0,   0,   0,   2, 6*h]], dtype=np.float64)
+        b = np.array([y[i,0], y[i+1], y[i+1], y[i+2], 0, 0, 0, 0])[np.newaxis].T
+        c = solve_equations(A, b)
+        print("=============================")
+        print(c)
+        results.append(c)
+
+    splits = []
+    for j in results:
+        for i in range(no_splits):
+            splits.append(j[i*4:i*4+4, 0])
+
+    print("Splits: ", splits)
+
+    def value(v, split, i):
+        a= split[i][0]
+        b= split[i][1]
+        c= split[i][2]
+        d= split[i][3]
+        S = a + b*(v-x[i]) + c*(v-x[i])**2 + d*(v-x[i])**3
+        return S
+
+    x_s = np.arange(x[0], x[2], 0.01)
+    y_s1 = value(np.arange(x[0], x[1], 0.01), splits, 0)
+    y_s2 = value(np.arange(x[1], x[2], 0.01), splits, 1)
+    print(y_s1)
+    print(y_s2)
+    y_s = list(y_s1)+list(y_s2)
+    plt.plot(x, y, 'bo')
+    plt.plot(x_s, y_s)
+    plt.title("Spline interpolation")
+    plt.show()
+
+
 def main():
-    coords = list(range(-2,3))
-    print(coords)
+    coords = list(range(-2, 3))
     points = [(float(x), float(abs(x))) for x in coords]
-    #points = [(1., 3.), (3., 7), (8., 10.)]
-    #points = [(1., 1.), (2., 2.), (3., 1.), (4., 1.), (0., 0.)]
+    points = [(1., 3.), (3., 7), (8., 10.)]
+    points = [(1.,6.), (3.,-2.), (5.,4.)]
+    points = [(1., 1.), (2., 8.), (3., 4.), (4., 1.)]
     #points = [(0., 4.), (2., 1.), (3., 6.), (4., 1.)]
 
-
-    polynomial_interpolation(points)
-    lagrange_interpolation(points)
+    spline_interpolation(points)
 
 
 if __name__ == "__main__":
