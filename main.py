@@ -94,6 +94,11 @@ def lagrange_interpolation(data):
     plt.title("Lagrange interpolation")
     plt.show()
 
+def spline_interpolation(data):
+    '''degree 3 polynomial'''
+    x = np.array([i[0] for i in data])[np.newaxis].T
+    y = np.array([i[1] for i in data])[np.newaxis].T
+    N = len(data)
 
 def main():
     coords = list(range(-2,3))
