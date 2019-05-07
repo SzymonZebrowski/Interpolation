@@ -62,16 +62,50 @@ def polynomial_interpolation(data):
     y_s = value(x_s)
     plt.plot(x, y, 'bo')
     plt.plot(x_s, y_s)
+    plt.title("Polynomial interpolation")
     plt.show()
 
+def lagrange_interpolation(data):
+    x = np.array([i[0] for i in data])[np.newaxis].T
+    y = np.array([i[1] for i in data])[np.newaxis].T
+    N = len(data)
+
+    def bases(v):
+        bases = []
+        for i in range(N):
+            base = 1
+            for j in range(N):
+                if(i!=j):
+                    base*=(v-x[j])/(x[i]-x[j])
+            bases.append(base)
+        return bases
+
+    def value(x):
+        base = bases(x)
+        vals = []
+        for i in range(N):
+            vals.append(base[i] * y[i])
+        return sum(vals)
+
+    x_s = np.arange(min(x), max(x), 0.01)
+    y_s = value(x_s)
+    plt.plot(x, y, 'bo')
+    plt.plot(x_s, y_s)
+    plt.title("Lagrange interpolation")
+    plt.show()
+
+
 def main():
+    coords = list(range(-2,3))
+    print(coords)
+    points = [(float(x), float(abs(x))) for x in coords]
     #points = [(1., 3.), (3., 7), (8., 10.)]
-    points = [(1.,1.), (2.,2.), (3.,1.), (4.,1.), (0,0)]
+    #points = [(1., 1.), (2., 2.), (3., 1.), (4., 1.), (0., 0.)]
     #points = [(0., 4.), (2., 1.), (3., 6.), (4., 1.)]
 
-    coords = 
-    points = [(x,x)]
+
     polynomial_interpolation(points)
+    lagrange_interpolation(points)
 
 
 if __name__ == "__main__":
