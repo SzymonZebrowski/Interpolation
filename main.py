@@ -98,49 +98,87 @@ def spline_interpolation(data):
     '''degree 3 polynomial'''
     x = np.array([i[0] for i in data])[np.newaxis].T
     y = np.array([i[1] for i in data])[np.newaxis].T
-    N = len(data)
+    n = len(data)
 
-    no_splits = N-1
-    results = []
-    for i in range(no_splits-1):
+    N = 4*(len(data)-1) #size of matrix
+    A = np.zeros((N, N))
+    b = np.zeros((N, 1))
         #Si - odcinek między punktami xi, a xi+1
         #h = xi+1 - xi
-        h=x[i+1]-x[i]
-        A = np.array([[1,   0,   0,   0,   0,   0,   0,   0],
-                      [1,   h,h**2,h**3,   0,   0,   0,   0],
-                      [0,   0,   0,   0,   1,   0,   0,   0],
-                      [0,   0,   0,   0,   1,   h,h**2,h**3],
-                      [0,   1, 2*h,3*h**2, 0,  -1,   0,   0],
-                      [0,   0,   2, 6*h,   0,   0,  -2,   0],
-                      [0,   0,   1,   0,   0,   0,   0,   0],
-                      [0,   0,   0,   0,   0,   0,   2, 6*h]], dtype=np.float64)
-        b = np.array([y[i,0], y[i+1], y[i+1], y[i+2], 0, 0, 0, 0])[np.newaxis].T
-        c = solve_equations(A, b)
-        print("=============================")
-        print(c)
-        results.append(c)
+        #A = np.array([[1,   0,   0,   0,   0,   0,   0,   0],
+        #              [1,   h,h**2,h**3,   0,   0,   0,   0],
+        #              [0,   0,   0,   0,   1,   0,   0,   0],
+        #              [0,   0,   0,   0,   1,   h,h**2,h**3],
+        #              [0,   1, 2*h,3*h**2, 0,  -1,   0,   0],
+        #              [0,   0,   2, 6*h,   0,   0,  -2,   0],
+        #              [0,   0,   1,   0,   0,   0,   0,   0],
+        #              [0,   0,   0,   0,   0,   0,   2, 6*h]], dtype=np.float64)
+        #b = np.array([y[i,0], y[i+1], y[i+1], y[i+2], 0, 0, 0, 0])[np.newaxis].T
 
-    splits = []
-    for j in results:
-        for i in range(no_splits):
-            splits.append(j[i*4:i*4+4, 0])
+    A[0,0] = 1.0
+    b[0] = y[0]
+    A[1,2] = 2.0
 
-    print("Splits: ", splits)
+    h = x[1]-x[0]
+    A[1,1] = 1.0
+    A[1,2] = 2*h
+    A[1,3] = 3*h*h
+    A[1,5] = -1.
 
-    def value(v, split, i):
-        a= split[i][0]
-        b= split[i][1]
-        c= split[i][2]
-        d= split[i][3]
-        S = a + b*(v-x[i]) + c*(v-x[i])**2 + d*(v-x[i])**3
-        return S
+    for i in range(1, n-1):
+        h = (x[i] - x[i - 1]);
 
-    x_s = np.arange(x[0], x[2], 0.01)
-    y_s1 = value(np.arange(x[0], x[1], 0.01), splits, 0)
-    y_s2 = value(np.arange(x[1], x[2], 0.01), splits, 1)
-    print(y_s1)
-    print(y_s2)
-    y_s = list(y_s1)+list(y_s2)
+        A[2 + 4 * (i - 1) + 0][4 * (i - 1) + 0] = 1.0
+        A[2 + 4 * (i - 1) + 0][4 * (i - 1) + 1] = h
+        A[2 + 4 * (i - 1) + 0][4 * (i - 1) + 2] = h * h
+        A[2 + 4 * (i - 1) + 0][4 * (i - 1) + 3] = h * h * h
+        b[2 + 4 * (i - 1) + 0] = y[i]
+
+        A[2 + 4 * (i - 1) + 1][4 * i + 0] = 1.0
+        b[2 + 4 * (i - 1) + 1] = y[i]
+
+        A[2 + 4 * (i - 1) + 2][4 * (i - 1) + 1] = 1.0
+        A[2 + 4 * (i - 1) + 2][4 * (i - 1) + 2] = 2 * h
+        A[2 + 4 * (i - 1) + 2][4 * (i - 1) + 3] = 3 * h * h
+        A[2 + 4 * (i - 1) + 2][4 * i + 1] = -1.0
+        b[2 + 4 * (i - 1) + 2] = 0.0
+
+        A[2 + 4 * (i - 1) + 3][4 * (i - 1) + 2] = 2.0
+        A[2 + 4 * (i - 1) + 3][4 * (i - 1) + 3] = 6.0 * h
+        A[2 + 4 * (i - 1) + 3][4 * i + 2] = -2.0
+        b[2 + 4 * (i - 1) + 3] = 0.0
+
+        for i in range(n-1, n):
+            h = (x[i] - x[i - 1]);
+
+            A[2 + 4 * (i - 1) + 0][4 * (i - 1) + 0] = 1.0
+            A[2 + 4 * (i - 1) + 0][4 * (i - 1) + 1] = h
+            A[2 + 4 * (i - 1) + 0][4 * (i - 1) + 2] = h * h
+            A[2 + 4 * (i - 1) + 0][4 * (i - 1) + 3] = h * h * h
+            b[2 + 4 * (i - 1) + 0][0] = y[i]
+
+            A[2 + 4 * (i - 1) + 1][4 * (i - 1) + 2] = 2.0
+            A[2 + 4 * (i - 1) + 1][4 * (i - 1) + 3] = 6.0 * h
+            A[2 + 4 * (i - 1) + 1][0] = 0
+
+    print(A)
+    print(b)
+    c = solve_equations(A, b)
+
+    print(c)
+
+    def value(v,c):
+        for i in range(n-1):
+            if v >=x[i] and v<=x[i+1]:
+                ca= c[4*i +0]
+                cb= c[4*i +1]
+                cc= c[4*i +2]
+                cd= c[4*i +3]
+                S = ca + cb*(v-x[i]) + cc*(v-x[i])**2 + cd*(v-x[i])**3
+                return S
+
+    x_s = np.arange(min(x), max(x), 0.01)
+    y_s = [value(i, c) for i in x_s]
     plt.plot(x, y, 'bo')
     plt.plot(x_s, y_s)
     plt.title("Spline interpolation")
@@ -148,14 +186,25 @@ def spline_interpolation(data):
 
 
 def main():
-    coords = list(range(-2, 3))
-    points = [(float(x), float(abs(x))) for x in coords]
-    points = [(1., 3.), (3., 7), (8., 10.)]
-    points = [(1.,6.), (3.,-2.), (5.,4.)]
-    points = [(1., 1.), (2., 8.), (3., 4.), (4., 1.)]
+    coords = list(range(-2, 10))
+    #points = [(float(x), float(abs(x))) for x in coords]
+    #points = [(1., 3.), (3., 7), (8., 10.)]
+    points = [(1., 6.), (3., -2.), (5., 4.)]
+    #points = [(1., 1.), (2., 8.), (3., 4.), (4., 1.)]
     #points = [(0., 4.), (2., 1.), (3., 6.), (4., 1.)]
 
+    f = lambda x: 2*x**3 - 25*x**2 - 8*x + 11
+    #points = [(i, f(i)) for i in range(-2, 10)]
+
+    x = np.array([i[0] for i in points])[np.newaxis].T
+    y = np.array([i[1] for i in points])[np.newaxis].T
     spline_interpolation(points)
+    lagrange_interpolation(points)
+
+    plt.plot(np.arange(min(x), max(x), 0.01), f(np.arange(min(x), max(x), 0.01)))
+    plt.title("Original function")
+    plt.show()
+
 
 
 if __name__ == "__main__":
