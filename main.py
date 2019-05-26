@@ -1,44 +1,46 @@
 import numpy as np
-import scipy.linalg
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+
+dir = "figs/"
 
 
 def solve_equations(A, b):
     '''LU factorization with pivoting'''
     P,L,U = LU_with_pivoting(A) # działa ok
-
-
-    print(1)
     N = len(A)
+
+
     y = np.zeros(N)
     x = np.zeros(N)
-    L = np.dot(P,L)
-    #1. P * L * U * x = b
-    #2. Solve P*L*y = b
+    #L = np.dot(P,L)
+    #1. L * U * x = P*b
+    #2. Solve L*y = P*b
     #3. Solve U*x = y
     #forward: PLy = b
+    #b = np.dot(P,b)
+
+
+
+    b = np.dot(P, b)
     y[0] = b[0] / L[0, 0]
     for i in range(1, N):
-        sum = 0
+        suma = 0
         for j in range(0, i):
-            sum += L[i, j] * y[j]
-        y[i] = (b[i]) - sum / L[i, i]
+            suma += L[i, j] * y[j]
+        print(f"Sum={suma}, b[i]={b[i]}, L[i,i]={L[i,i]}")
+        y[i] = (b[i]) - suma / L[i, i]
 
     #backward: Ux = y
     for i in range(N - 1, -1, -1):
-        sum = y[i]
+        suma = y[i]
         for j in range(i, N):
             if i != j:
-                sum -= U[i, j] * x[j]
-        x[i] = sum / U[i, i]
+                suma -= U[i, j] * x[j]
+        x[i] = suma / U[i, i]
 
-    print(2)
-    print(3)
-    print(4)
     return x
-
 
 def LU_with_pivoting(A):
     M, N = np.shape(A)
@@ -67,7 +69,7 @@ def LU_with_pivoting(A):
     return P, L, U
 
 
-def polynomial_interpolation(data):
+def polynomial_interpolation(data, original, filename):
     x = np.array([i[0] for i in data])[np.newaxis].T
     y = np.array([i[1] for i in data])[np.newaxis].T
     N = len(data)
@@ -85,17 +87,21 @@ def polynomial_interpolation(data):
             vals.append(x_n[i]*a[i])
         return sum(vals)
 
-    x_s = np.arange(min(x), max(x), 0.01)
+    x_s = np.arange(min(x), max(x), 10)
     y_s = value(x_s)
-    plt.plot(x, y, 'bo')
-    plt.plot(x_s, y_s)
+    plt.plot(x, y, 'bo', label="Points")
+    plot_original_profile(original)
+    plt.plot(x_s, y_s, label="Interpolation")
+    plt.legend(loc="best")
+    plt.axis([min(x) * 0.8, max(x) * 1.2, min(y) * 0.8, max(y) * 1.2])
     plt.title(f"Polynomial interpolation - {N} points")
     plt.xlabel("Distance [m]")
     plt.ylabel("Height [m]")
-    plt.show()
+    plt.savefig(f"{dir}{filename}_POLY_{N}.png")
+    plt.close()
 
 
-def lagrange_interpolation(data):
+def lagrange_interpolation(data, original, filename):
     x = np.array([i[0] for i in data])[np.newaxis].T
     y = np.array([i[1] for i in data])[np.newaxis].T
     N = len(data)
@@ -106,25 +112,29 @@ def lagrange_interpolation(data):
             base = 1
             for j in range(N):
                 if(i!=j):
-                    base*=(v-x[j])/(x[i]-x[j])
+                    base *= ((v-x[j])/(x[i]-x[j]))
             bases.append(base)
         return bases
 
     def value(x):
         base = bases(x)
-        vals = []
+        val = 0
         for i in range(N):
-            vals.append(base[i] * y[i])
-        return sum(vals)
+            val += base[i] * y[i]
+        return val
 
-    x_s = np.arange(min(x), max(x), 0.01)
+    x_s = np.arange(x[0, 0], x[-1, 0], 10)
     y_s = value(x_s)
-    plt.plot(x, y, 'bo')
-    plt.plot(x_s, y_s)
+    plt.plot(x, y, 'bo', label="Points")
+    plot_original_profile(original)
+    plt.plot(x_s, y_s, label="Interpolation")
+    plt.legend(loc="best")
+    plt.axis([min(x)*0.8, max(x)*1.2, min(y)*0.8, max(y)*1.2])
     plt.title(f"Lagrange interpolation - {N} points")
     plt.xlabel("Distance [m]")
     plt.ylabel("Height [m]")
-    plt.show()
+    plt.savefig(f"{dir}{filename}_LAGR_{N}.png")
+    plt.close()
 
 
 def create_spline_matrix(data):
@@ -163,20 +173,17 @@ def create_spline_matrix(data):
     return A, b
 
 
-def spline_interpolation(data):
+def spline_interpolation(data, original, filename):
     '''3rd degree polynomial'''
     x = np.array([i[0] for i in data])[np.newaxis].T
     y = np.array([i[1] for i in data])[np.newaxis].T
     n = len(data)
 
     N = 4*(len(data)-1) #size of matrix
-    A = np.zeros((N, N))
-    b = np.zeros((N, 1))
+
 
     A, b = create_spline_matrix(data)
-    print("Solving equation")
     c = solve_equations(A, b)
-    print("Equation solved")
 
     def value(v, c):
         for i in range(n-1):
@@ -189,14 +196,18 @@ def spline_interpolation(data):
                 return S
 
     x_s = np.arange(min(x), max(x), 10)
-    print(x_s)
     y_s = [value(i, c) for i in x_s]
-    plt.plot(x, y, 'bo')
-    plt.plot(x_s, y_s)
+    print(y_s)
+    plt.plot(x, y, 'bo', label="Points")
+    plot_original_profile(original)
+    plt.plot(x_s, y_s, 'g', label="Interpolation")
+    plt.legend(loc="best")
+    plt.axis([min(x) * 0.8, max(x) * 1.2, min(y) * 0.8, max(y) * 1.2])
     plt.title(f"Spline interpolation - {n} points")
     plt.xlabel("Distance [m]")
     plt.ylabel("Height [m]")
-    plt.show()
+    plt.savefig(f"{dir}{filename}_SPLINE_{n}.png")
+    plt.close()
 
 
 def load_data(filename):
@@ -213,10 +224,7 @@ def load_data(filename):
 
 
 def main():
-    A = np.array([[1.,3.,4.],[5.,1.,7.], [4.,2.,1.]])
-    b = np.array([[1.,2.,3.]]).T
-    print(A,b)
-    print(solve_equations(A, b))
+
     coords = list(range(-20, 21))
     points = [(float(x), abs(x)) for x in coords]
 
@@ -224,35 +232,33 @@ def main():
     #points = [(1., 3.), (3., 7), (8., 10.)]
     #points = [(1., 6.), (3., -2.), (5., 4.)]
     #points = [(1., 1.), (2., 8.), (3., 4.), (4., 1.)]
-    #points = [(0., 4.), (2., 1.), (3., 6.), (4., 1.)]
+    points = [(0., 4.), (2., 1.), (3., 6.), (4., 1.)]
 
 
-    f = lambda x: 2*x**3 - 25*x**2 - 8*x + 11
-    #points = [(float(i), f(i)) for i in range(-2, 10)]
+
 
     x = np.array([i[0] for i in points])[np.newaxis].T
     y = np.array([i[1] for i in points])[np.newaxis].T
-    spline_interpolation(points)
+    #spline_interpolation(points)
     lagrange_interpolation(points)
-    polynomial_interpolation(points)
-    plt.plot(np.arange(min(x), max(x), 0.01), f(np.arange(min(x), max(x), 0.01)))
-    plt.title("Original function")
-    plt.show()
+    #polynomial_interpolation(points)
 
 
-
-if __name__ == "__main__":
-    #main()
-    name = "MountEverest"
-    filename = name + '.csv.'
-    data = load_data(filename)
+def plot_original_profile(data):
     distance = [x[0] for x in data]
     height = [x[1] for x in data]
-    plt.plot(distance, height)
-    plt.title(name)
-    plt.xlabel("Distance [m]")
-    plt.ylabel("Height [m]")
-    plt.show()
+    plt.plot(distance, height, label="Profile")
+    return plt
 
-    lagrange_interpolation(data)
-    spline_interpolation(data)
+if __name__ == "__main__":
+    names = ["WielkiKanionKolorado", "MountEverest"]
+    filenames = [(name + '.csv.') for name in names]
+    nums = [32,16,8,4,2,1]
+    for i in range(len(names)):
+        org_data = load_data(filenames[i])
+
+        for j in nums:
+            data = org_data[0::j]
+            lagrange_interpolation(data, org_data, names[i])
+            spline_interpolation(data, org_data, names[i])
+
