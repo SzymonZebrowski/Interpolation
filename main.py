@@ -1,11 +1,12 @@
 import numpy as np
 import scipy.linalg
 import matplotlib.pyplot as plt
+import pandas as pd
+import os
 
 
 def solve_equations(A, b):
     '''LU factorization with pivoting'''
-    M,N = np.shape(A)
     P,L,U = LU_with_pivoting(A) # działa ok
 
     # x = A \ B
@@ -29,6 +30,7 @@ def LU_with_pivoting(A):
             if abs(U[i, k]) == pivot:
                 ind = i
                 break
+
         #change rows
         U[[k, ind], k:M] = U[[ind, k], k:M]
         L[[k, ind], :k] = L[[ind, k], :k]
@@ -39,6 +41,7 @@ def LU_with_pivoting(A):
             U[j, k:M] -= L[j, k] * U[k, k:M]
 
     return P, L, U
+
 
 def polynomial_interpolation(data):
     x = np.array([i[0] for i in data])[np.newaxis].T
@@ -64,6 +67,7 @@ def polynomial_interpolation(data):
     plt.plot(x_s, y_s)
     plt.title("Polynomial interpolation")
     plt.show()
+
 
 def lagrange_interpolation(data):
     x = np.array([i[0] for i in data])[np.newaxis].T
@@ -128,10 +132,11 @@ def create_spline_matrix(data):
     A[4*(n-1)-2, 2] = 2
     A[4*(n-1)-1, 4*(n-2):4*(n-2)+4] = np.multiply(ddS, [1, 1, 1, h])
 
-    return A,b
+    return A ,b
+
 
 def spline_interpolation(data):
-    '''degree 3 polynomial'''
+    '''3rd degree polynomial'''
     x = np.array([i[0] for i in data])[np.newaxis].T
     y = np.array([i[1] for i in data])[np.newaxis].T
     n = len(data)
@@ -140,7 +145,7 @@ def spline_interpolation(data):
     A = np.zeros((N, N))
     b = np.zeros((N, 1))
 
-    A,b = create_spline_matrix(data)
+    A, b = create_spline_matrix(data)
     c = solve_equations(A, b)
 
     def value(v,c):
@@ -161,9 +166,25 @@ def spline_interpolation(data):
     plt.show()
 
 
+def load_data(filename):
+    #return data as list of tuples (distance, height)
+
+    data = pd.read_csv(os.getcwd() + "/data/"+filename, sep=',')
+    distance = np.array([float(x) for x in data.iloc[:, 0].values])
+    altitude = np.array([float(x) for x in data.iloc[:, 1].values])
+
+    data = [(x[0], x[1]) for x in zip(distance, altitude)]
+    return data
+
 def main():
-    coords = list(range(-10, 11))
-    points = [(float(x), float(abs(x))) for x in coords]
+    A = np.array([[1.,3.,4.],[5.,1.,7.], [4.,2.,1.]])
+    b = np.array([[1.,2.,3.]]).T
+    print(A,b)
+    print(solve_equations(A,b))
+    coords = list(range(-20,21))
+    points = [(float(x), abs(x)) for x in coords]
+
+    #points = [(float(x), np.random.randint(-10, 10)) for x in range(-10, 20, 4)]
     #points = [(1., 3.), (3., 7), (8., 10.)]
     #points = [(1., 6.), (3., -2.), (5., 4.)]
     #points = [(1., 1.), (2., 8.), (3., 4.), (4., 1.)]
@@ -171,18 +192,25 @@ def main():
 
 
     f = lambda x: 2*x**3 - 25*x**2 - 8*x + 11
-    #points = [(i, f(i)) for i in range(-2, 10)]
+    #points = [(float(i), f(i)) for i in range(-2, 10)]
 
-    #x = np.array([i[0] for i in points])[np.newaxis].T
-    #y = np.array([i[1] for i in points])[np.newaxis].T
+    x = np.array([i[0] for i in points])[np.newaxis].T
+    y = np.array([i[1] for i in points])[np.newaxis].T
     spline_interpolation(points)
     lagrange_interpolation(points)
-
-    #plt.plot(np.arange(min(x), max(x), 0.01), f(np.arange(min(x), max(x), 0.01)))
-    #plt.title("Original function")
-    #plt.show()
+    polynomial_interpolation(points)
+    plt.plot(np.arange(min(x), max(x), 0.01), f(np.arange(min(x), max(x), 0.01)))
+    plt.title("Original function")
+    plt.show()
 
 
 
 if __name__ == "__main__":
-    main()
+    #main()
+    data = load_data("MountEverest.csv")
+    distance = [x[0] for x in data]
+    height = [x[1] for x in data]
+    plt.plot(distance, height)
+    plt.show()
+
+    lagrange_interpolation(data)
