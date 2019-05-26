@@ -9,10 +9,34 @@ def solve_equations(A, b):
     '''LU factorization with pivoting'''
     P,L,U = LU_with_pivoting(A) # działa ok
 
-    # x = A \ B
-    # x = inv(A) * B
-    # x = U \ (L \ (P*b))
-    x = np.linalg.lstsq(U, (np.linalg.lstsq(L, (np.dot(P, b)))[0]))[0]
+
+    print(1)
+    N = len(A)
+    y = np.zeros(N)
+    x = np.zeros(N)
+    L = np.dot(P,L)
+    #1. P * L * U * x = b
+    #2. Solve P*L*y = b
+    #3. Solve U*x = y
+    #forward: PLy = b
+    y[0] = b[0] / L[0, 0]
+    for i in range(1, N):
+        sum = 0
+        for j in range(0, i):
+            sum += L[i, j] * y[j]
+        y[i] = (b[i]) - sum / L[i, i]
+
+    #backward: Ux = y
+    for i in range(N - 1, -1, -1):
+        sum = y[i]
+        for j in range(i, N):
+            if i != j:
+                sum -= U[i, j] * x[j]
+        x[i] = sum / U[i, i]
+
+    print(2)
+    print(3)
+    print(4)
     return x
 
 
@@ -65,7 +89,9 @@ def polynomial_interpolation(data):
     y_s = value(x_s)
     plt.plot(x, y, 'bo')
     plt.plot(x_s, y_s)
-    plt.title("Polynomial interpolation")
+    plt.title(f"Polynomial interpolation - {N} points")
+    plt.xlabel("Distance [m]")
+    plt.ylabel("Height [m]")
     plt.show()
 
 
@@ -95,7 +121,9 @@ def lagrange_interpolation(data):
     y_s = value(x_s)
     plt.plot(x, y, 'bo')
     plt.plot(x_s, y_s)
-    plt.title("Lagrange interpolation")
+    plt.title(f"Lagrange interpolation - {N} points")
+    plt.xlabel("Distance [m]")
+    plt.ylabel("Height [m]")
     plt.show()
 
 
@@ -132,7 +160,7 @@ def create_spline_matrix(data):
     A[4*(n-1)-2, 2] = 2
     A[4*(n-1)-1, 4*(n-2):4*(n-2)+4] = np.multiply(ddS, [1, 1, 1, h])
 
-    return A ,b
+    return A, b
 
 
 def spline_interpolation(data):
@@ -146,23 +174,28 @@ def spline_interpolation(data):
     b = np.zeros((N, 1))
 
     A, b = create_spline_matrix(data)
+    print("Solving equation")
     c = solve_equations(A, b)
+    print("Equation solved")
 
-    def value(v,c):
+    def value(v, c):
         for i in range(n-1):
             if v >=x[i] and v<=x[i+1]:
-                ca= c[4*i +0]
-                cb= c[4*i +1]
-                cc= c[4*i +2]
-                cd= c[4*i +3]
+                ca= c[4*i + 0]
+                cb= c[4*i + 1]
+                cc= c[4*i + 2]
+                cd= c[4*i + 3]
                 S = ca + cb*(v-x[i]) + cc*(v-x[i])**2 + cd*(v-x[i])**3
                 return S
 
-    x_s = np.arange(min(x), max(x), 0.01)
+    x_s = np.arange(min(x), max(x), 10)
+    print(x_s)
     y_s = [value(i, c) for i in x_s]
     plt.plot(x, y, 'bo')
     plt.plot(x_s, y_s)
-    plt.title("Spline interpolation")
+    plt.title(f"Spline interpolation - {n} points")
+    plt.xlabel("Distance [m]")
+    plt.ylabel("Height [m]")
     plt.show()
 
 
@@ -176,12 +209,15 @@ def load_data(filename):
     data = [(x[0], x[1]) for x in zip(distance, altitude)]
     return data
 
+
+
+
 def main():
     A = np.array([[1.,3.,4.],[5.,1.,7.], [4.,2.,1.]])
     b = np.array([[1.,2.,3.]]).T
     print(A,b)
-    print(solve_equations(A,b))
-    coords = list(range(-20,21))
+    print(solve_equations(A, b))
+    coords = list(range(-20, 21))
     points = [(float(x), abs(x)) for x in coords]
 
     #points = [(float(x), np.random.randint(-10, 10)) for x in range(-10, 20, 4)]
@@ -207,10 +243,16 @@ def main():
 
 if __name__ == "__main__":
     #main()
-    data = load_data("MountEverest.csv")
+    name = "MountEverest"
+    filename = name + '.csv.'
+    data = load_data(filename)
     distance = [x[0] for x in data]
     height = [x[1] for x in data]
     plt.plot(distance, height)
+    plt.title(name)
+    plt.xlabel("Distance [m]")
+    plt.ylabel("Height [m]")
     plt.show()
 
     lagrange_interpolation(data)
+    spline_interpolation(data)
